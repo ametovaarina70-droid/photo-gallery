@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h2 mb-3">Inbox</h1>
+<p class="text-muted">Messages sent to you are shown here with reply and delete buttons.</p>
+
+{% if messages %}
+    <div class="vstack gap-3">
+        {% for message in messages %}
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between flex-wrap gap-2">
+                    <div>
+                        <h2 class="h5 mb-1">From {{ message.sender_name }}</h2>
+                        <p class="text-muted mb-2">{{ message.created_at }}</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('reply_message', message_id=message.id) }}">Reply</a>
+                        <form method="post" action="{{ url_for('delete_message', message_id=message.id) }}">
+                            <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                <p class="mb-0">{{ message.body }}</p>
+                {% if message.filename %}
+                    <hr>
+                    <p class="small text-muted mb-2">Related photo post:</p>
+                    <img class="message-photo" src="{{ url_for('static', filename='uploads/' ~ message.filename) }}" alt="Related photo">
+                    <p class="small mt-2 mb-0">{{ message.photo_description }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-box">No messages yet.</div>
+{% endif %}
+{% endblock %}

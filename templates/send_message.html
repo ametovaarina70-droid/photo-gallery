@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-page-wide">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h3 mb-3">Direct Message</h1>
+            <p class="text-muted">Send a message to {{ photo.username }} about this post.</p>
+            <img class="edit-preview mb-3" src="{{ url_for('static', filename='uploads/' ~ photo.filename) }}" alt="Uploaded photo">
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Message</label>
+                    <textarea class="form-control" name="body" rows="5" required></textarea>
+                </div>
+                <button class="btn btn-primary" type="submit">Send Message</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('gallery') }}">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-page-wide">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h3 mb-3">Edit Photo Information</h1>
+            <img class="edit-preview mb-3" src="{{ url_for('static', filename='uploads/' ~ photo.filename) }}" alt="Uploaded photo">
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Textual description</label>
+                    <textarea class="form-control" name="description" rows="4" required>{{ photo.description }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Keywords</label>
+                    <input class="form-control" type="text" name="keywords" value="{{ photo.keywords }}" required>
+                </div>
+                <button class="btn btn-primary" type="submit">Save Changes</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('gallery') }}">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

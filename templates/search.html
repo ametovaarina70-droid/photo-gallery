@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h2 mb-3">Search Photos by Keyword</h1>
+<form method="post" class="card card-body shadow-sm mb-4">
+    <label class="form-label">Keyword</label>
+    <div class="input-group">
+        <input class="form-control" type="text" name="keyword" value="{{ keyword }}" placeholder="example: nature" required>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+</form>
+
+{% if searched %}
+    <h2 class="h4 mb-3">Matched Photos</h2>
+    {% if photos %}
+        <div class="row g-4">
+            {% for photo in photos %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card photo-card shadow-sm h-100">
+                    <img src="{{ url_for('static', filename='uploads/' ~ photo.filename) }}" class="card-img-top" alt="Uploaded photo">
+                    <div class="card-body d-flex flex-column">
+                        <h3 class="h5">{{ photo.username }}</h3>
+                        <p>{{ photo.description }}</p>
+                        <p class="keywords mb-3">{{ photo.keywords }}</p>
+                        <div class="mt-auto d-grid gap-2">
+                            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('send_message', photo_id=photo.id) }}">Direct Message</a>
+                            {% if current_user.id == photo.user_id %}
+                                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('edit_photo', photo_id=photo.id) }}">Edit Photo Information</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-box">No photos matched this keyword.</div>
+    {% endif %}
+{% endif %}
+{% endblock %}

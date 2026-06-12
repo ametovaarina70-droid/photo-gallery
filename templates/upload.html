@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-page-wide">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h3 mb-3">Upload Photo</h1>
+            <form method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Photo file</label>
+                    <input class="form-control" type="file" name="photo" accept="image/png,image/jpeg,image/gif" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Textual description</label>
+                    <textarea class="form-control" name="description" rows="4" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Keywords</label>
+                    <input class="form-control" type="text" name="keywords" placeholder="example: nature, travel, city" required>
+                </div>
+                <button class="btn btn-primary" type="submit">Upload</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

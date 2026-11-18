@@ -71,3 +71,19 @@ The project uses three SQLite tables:
 - `messages`
 
 
+
+## 5. Deploy to Vercel
+
+On your computer the app uses SQLite (`gallery.db`) and saves photos in `public/static/uploads/`.
+Vercel's disk is temporary, so online the app uses:
+
+- **Postgres** for users, photos and messages (set `DATABASE_URL` or `POSTGRES_URL`)
+- **Vercel Blob** for uploaded photos (set `BLOB_READ_WRITE_TOKEN`)
+- **`SECRET_KEY`** to protect sign-in sessions (any long random text)
+
+Steps:
+
+1. Import this GitHub repository as a new project on vercel.com.
+2. In the project, open **Storage** and add a **Postgres** database (Neon) and a **Blob** store (public access). Vercel adds their environment variables for you.
+3. In **Settings → Environment Variables**, add `SECRET_KEY`.
+4. Redeploy. The tables are created automatically on the first visit.

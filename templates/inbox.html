@@ -24,7 +24,7 @@
                 {% if message.filename %}
                     <hr>
                     <p class="small text-muted mb-2">Related photo post:</p>
-                    <img class="message-photo" src="{{ url_for('static', filename='uploads/' ~ message.filename) }}" alt="Related photo">
+                    <img class="message-photo" src="{{ photo_url(message.filename) }}" alt="Related photo">
                     <p class="small mt-2 mb-0">{{ message.photo_description }}</p>
                 {% endif %}
             </div>

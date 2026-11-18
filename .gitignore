@@ -4,5 +4,7 @@ __pycache__/
 venv/
 .venv/
 gallery.db
-static/uploads/*
-!static/uploads/.gitkeep
+public/static/uploads/*
+!public/static/uploads/.gitkeep
+.vercel
+.env*.local

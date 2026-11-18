@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 from functools import wraps
 from datetime import datetime
 
@@ -19,11 +20,22 @@ from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATABASE = os.path.join(BASE_DIR, "gallery.db")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+# Static files live in public/static so Vercel can serve them from its CDN.
+STATIC_FOLDER = os.path.join(BASE_DIR, "public", "static")
+UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-secret-key-for-your-local-project"
+# On Vercel these are set automatically when you connect the storage:
+#   DATABASE_URL (or POSTGRES_URL) -> Postgres database for users, photos, messages
+#   BLOB_READ_WRITE_TOKEN          -> Vercel Blob store for uploaded photos
+# When they are not set (on your own computer), SQLite and local files are used.
+POSTGRES_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+USE_BLOB = bool(os.environ.get("BLOB_READ_WRITE_TOKEN"))
+
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="/static")
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "change-this-secret-key-for-your-local-project"
+)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
@@ -31,10 +43,39 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 # ----------------------------
 # Database helper functions
 # ----------------------------
+class PostgresDB:
+    """Small wrapper so the same "?" SQL works with both SQLite and Postgres."""
+
+    def __init__(self, url):
+        import psycopg
+        from psycopg.rows import dict_row
+
+        self.conn = psycopg.connect(url, row_factory=dict_row)
+
+    def execute(self, sql, params=()):
+        return self.conn.execute(sql.replace("?", "%s"), params)
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
+_db_ready = False
+
+
 def get_db():
+    global _db_ready
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row
+        if POSTGRES_URL:
+            g.db = PostgresDB(POSTGRES_URL)
+        else:
+            g.db = sqlite3.connect(DATABASE)
+            g.db.row_factory = sqlite3.Row
+        if not _db_ready:
+            _db_ready = True
+            init_db()
     return g.db
 
 
@@ -47,6 +88,9 @@ def close_db(error=None):
 
 def init_db():
     db = get_db()
+    if POSTGRES_URL:
+        init_postgres(db)
+        return
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -88,6 +132,44 @@ def init_db():
     db.commit()
 
 
+def init_postgres(db):
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS photos (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users (id),
+            filename TEXT NOT NULL,
+            description TEXT NOT NULL,
+            keywords TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            sender_id INTEGER NOT NULL REFERENCES users (id),
+            receiver_id INTEGER NOT NULL REFERENCES users (id),
+            photo_id INTEGER REFERENCES photos (id),
+            body TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    db.commit()
+
+
 @app.cli.command("init-db")
 def init_db_command():
     init_db()
@@ -119,6 +201,32 @@ def login_required(view):
         return view(**kwargs)
 
     return wrapped_view
+
+
+@app.template_global()
+def photo_url(filename):
+    """Photos in Vercel Blob are stored as full URLs; local ones as file names."""
+    if filename and filename.startswith(("http://", "https://")):
+        return filename
+    return url_for("static", filename="uploads/" + filename)
+
+
+def save_photo(photo):
+    filename = unique_filename(photo.filename)
+    if USE_BLOB:
+        from vercel.blob import sync as blob
+
+        uploaded = blob.put_blob(
+            "uploads/" + filename,
+            photo.read(),
+            access="public",
+            content_type=photo.mimetype,
+            add_random_suffix=True,
+        )
+        return uploaded.url
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    photo.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+    return filename
 
 
 def allowed_file(filename):
@@ -242,9 +350,7 @@ def upload():
             flash("Only png, jpg, jpeg, and gif files are allowed.", "danger")
             return render_template("upload.html")
 
-        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-        filename = unique_filename(photo.filename)
-        photo.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        filename = save_photo(photo)
 
         get_db().execute(
             """
